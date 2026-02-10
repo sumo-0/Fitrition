@@ -40,7 +40,7 @@ public class NutritionFragment extends Fragment {
     private static final int REQUEST_CAMERA_PERMISSION = 100; // Código para identificar el permiso
 
     // IMPORTANTE: Pon tu URL de n8n aquí
-    private static final String N8N_WEBHOOK_URL = "https://tu-usuario.app.n8n.cloud/webhook/analizar-comida";
+    private static final String N8N_WEBHOOK_URL = "https://markits.app.n8n.cloud/webhook-test/analizar-comida";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -104,7 +104,14 @@ public class NutritionFragment extends Fragment {
     }
 
     private void enviarFotoAN8n(Bitmap bitmap) {
-        OkHttpClient client = new OkHttpClient();
+
+ 
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS) // Tiempo para conectar con el servidor
+                .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)   // Tiempo para subir la foto (si es grande)
+                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)    // Tiempo esperando a que la IA responda
+                .build();
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
