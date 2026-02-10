@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color; // Importante para cambiar el color del texto
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -35,14 +36,12 @@ import okhttp3.Response;
 
 public class NutritionFragment extends Fragment {
 
-
     private FragmentNutritionBinding binding;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_CAMERA_PERMISSION = 100;
 
-    // IMPORTANTE: He cambiado '/webhook-test/' por '/webhook/' para PRODUCCIÓN.
-    // Asegúrate de que en n8n el interruptor "Active" esté en VERDE.
-    private static final String N8N_WEBHOOK_URL = "https://markits.app.n8n.cloud/webhook-test/analizar-comida";
+    // Tu URL de producción
+    private static final String N8N_WEBHOOK_URL = "https://markits.app.n8n.cloud/webhook/analizar-comida";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -90,7 +89,7 @@ public class NutritionFragment extends Fragment {
                 Bitmap imageBitmap = (Bitmap) extras.get("data");
                 binding.imageViewFood.setImageBitmap(imageBitmap);
 
-                // INICIO DE LA ANIMACIÓN
+                // Empezamos la carga
                 toggleLoading(true);
 
                 enviarFotoAN8n(imageBitmap);
@@ -98,28 +97,27 @@ public class NutritionFragment extends Fragment {
         }
     }
 
-    // --- MÉTODO PARA CONTROLAR LA ANIMACIÓN ---
+    // --- CONTROL DE ANIMACIÓN ---
     private void toggleLoading(boolean isLoading) {
         if (binding == null) return;
 
         if (isLoading) {
-            // MOSTRAR animación, OCULTAR resultados viejos
+            // MOSTRAR animación, OCULTAR todo lo demás
             binding.animationView.setVisibility(View.VISIBLE);
             binding.animationView.playAnimation();
-
-            // Ocultamos el grid de resultados mientras carga para que se vea limpio
-            binding.resultsGrid.setVisibility(View.GONE);
+            binding.resultsGrid.setVisibility(View.GONE); // Ocultar resultados viejos
 
             binding.textViewStatus.setText("Consultando a la IA... ⏳");
+            binding.textViewStatus.setTextColor(Color.GRAY); // Color normal
             binding.btnCamera.setEnabled(false);
         } else {
             // OCULTAR animación
             binding.animationView.pauseAnimation();
             binding.animationView.setVisibility(View.GONE);
-
-            // Mostrar resultados
-            binding.resultsGrid.setVisibility(View.VISIBLE);
             binding.btnCamera.setEnabled(true);
+
+            // NOTA: No mostramos el grid aquí automáticamente.
+            // Dejamos que onResponse decida si mostrarlo (si es comida) u ocultarlo (si no lo es).
         }
     }
 
@@ -150,10 +148,8 @@ public class NutritionFragment extends Fragment {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        toggleLoading(false); // Parar animación
-                        if (binding != null) {
-                            binding.textViewStatus.setText("❌ Error de conexión: " + e.getMessage());
-                        }
+                        toggleLoading(false);
+                        if (binding != null) binding.textViewStatus.setText("❌ Error de conexión: " + e.getMessage());
                     });
                 }
             }
@@ -165,10 +161,12 @@ public class NutritionFragment extends Fragment {
 
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
-                            if (binding == null) return; // Protección crash
+                            // Paramos la animación visualmente
+                            toggleLoading(false);
+
+                            if (binding == null) return;
 
                             try {
-                                // 1. Limpieza del JSON
                                 String jsonLimpio = responseData
                                         .replace("```json", "")
                                         .replace("```", "")
@@ -176,26 +174,38 @@ public class NutritionFragment extends Fragment {
 
                                 JSONObject json = new JSONObject(jsonLimpio);
 
-                                // 2. Obtener datos
-                                String cal = json.optString("calories", "0");
-                                String pro = json.optString("protein", "0");
-                                String fat = json.optString("fat", "0");
-                                String car = json.optString("carbs", "0");
+                                // Usamos optInt para obtener números directamente
+                                int cal = json.optInt("calories", 0);
+                                int pro = json.optInt("protein", 0);
+                                int fat = json.optInt("fat", 0);
+                                int car = json.optInt("carbs", 0);
 
-                                // 3. Pintar en las nuevas tarjetas
-                                binding.tvCalories.setText(cal);
-                                binding.tvProtein.setText(pro);
-                                binding.tvFat.setText(fat);
-                                binding.tvCarbs.setText(car);
+                                // --- LÓGICA DE DETECCIÓN DE "NO COMIDA" ---
+                                // Si la suma de todo es 0, es que la IA no vio comida
+                                if (cal == 0 && pro == 0 && fat == 0 && car == 0) {
 
-                                binding.textViewStatus.setText("✅ Análisis completado");
+                                    // CASO 1: NO ES COMIDA
+                                    binding.resultsGrid.setVisibility(View.GONE); // Ocultar tarjetas
 
-                                // 4. Parar animación y mostrar todo
-                                toggleLoading(false);
+                                    binding.textViewStatus.setText("⚠️ No parece ser comida.\nIntenta enfocar mejor o probar otro plato.");
+                                    binding.textViewStatus.setTextColor(Color.RED); // Ponemos el texto en rojo para avisar
+
+                                } else {
+
+                                    // CASO 2: SÍ ES COMIDA
+                                    binding.resultsGrid.setVisibility(View.VISIBLE); // Mostrar tarjetas
+
+                                    binding.tvCalories.setText(String.valueOf(cal));
+                                    binding.tvProtein.setText(String.valueOf(pro));
+                                    binding.tvFat.setText(String.valueOf(fat));
+                                    binding.tvCarbs.setText(String.valueOf(car));
+
+                                    binding.textViewStatus.setText("✅ Análisis completado");
+                                    binding.textViewStatus.setTextColor(Color.parseColor("#999999")); // Resetear color a gris
+                                }
 
                             } catch (Exception e) {
-                                toggleLoading(false);
-                                binding.textViewStatus.setText("⚠️ Error leyendo datos. Intenta de nuevo.");
+                                binding.textViewStatus.setText("⚠️ Error leyendo datos.");
                             }
                         });
                     }
@@ -204,7 +214,7 @@ public class NutritionFragment extends Fragment {
                         getActivity().runOnUiThread(() -> {
                             toggleLoading(false);
                             if (binding != null) {
-                                binding.textViewStatus.setText("❌ Error del servidor: " + response.code());
+                                binding.textViewStatus.setText("❌Escanee una comida de verdad, porfavor❌");
                             }
                         });
                     }
