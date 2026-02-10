@@ -343,25 +343,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
-                app:cardCornerRadius="12dp"
-                app:cardElevation="4dp"
                 android:clickable="true"
                 android:focusable="true"
-                android:foreground="?android:attr/selectableItemBackground">
+                android:foreground="?android:attr/selectableItemBackground"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="4dp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_add_meal"
                     android:layout_width="match_parent"
                     android:layout_height="60dp"
-                    android:layout_marginTop="24dp"
+                    android:padding="16dp"
                     android:text="AÑADIR COMIDA"
                     android:textSize="16sp"
                     android:textStyle="bold"
-                    android:padding="16dp"
+                    app:backgroundTint="#4ECDC4"
                     app:cornerRadius="12dp"
                     app:icon="@android:drawable/ic_input_add"
-                    app:iconGravity="start"
-                    app:backgroundTint="#4ECDC4" />
+                    app:iconGravity="start" />
 
             </androidx.cardview.widget.CardView>
 
