@@ -1,10 +1,11 @@
 package com.example.proyectofitrition;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Color; // Importante para cambiar el color del texto
+import android.graphics.Color;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -40,19 +41,27 @@ public class NutritionFragment extends Fragment {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_CAMERA_PERMISSION = 100;
 
-    // Tu URL de producción
-    private static final String N8N_WEBHOOK_URL = "https://markits.app.n8n.cloud/webhook/analizar-comida";
+    // Variable para guardar la foto y poder enviarla al Chef
+    private Bitmap fotoActual;
+
+    // URL 1: Analizar Comida (Macros) - Asegúrate que es POST y termina en /webhook/
+    private static final String URL_ANALISIS = "https://markits.app.n8n.cloud/webhook-test/analizar-comida";
+
+    // URL 2: Modo Chef (¡Crea el nuevo flujo en n8n y pon la URL aquí!)
+    private static final String URL_RECETA = "https://markits.app.n8n.cloud/webhook-test/receta-chef";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentNutritionBinding.inflate(inflater, container, false);
+
         binding.btnCamera.setOnClickListener(v -> verificarPermisosYAbrirCamara());
+        binding.btnChef.setOnClickListener(v -> pedirRecetaChef());
+
         return binding.getRoot();
     }
 
     private void verificarPermisosYAbrirCamara() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         } else {
             abrirCamara();
@@ -62,22 +71,16 @@ public class NutritionFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                abrirCamara();
-            } else {
-                Toast.makeText(getContext(), "Se necesita permiso de cámara", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == REQUEST_CAMERA_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            abrirCamara();
+        } else {
+            Toast.makeText(getContext(), "Permiso necesario", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        try {
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "No se pudo abrir la cámara: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
+        try { startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE); } catch (Exception e) {}
     }
 
     @Override
@@ -86,42 +89,52 @@ public class NutritionFragment extends Fragment {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == -1 && data != null) {
             Bundle extras = data.getExtras();
             if (extras != null && extras.containsKey("data")) {
-                Bitmap imageBitmap = (Bitmap) extras.get("data");
-                binding.imageViewFood.setImageBitmap(imageBitmap);
+                fotoActual = (Bitmap) extras.get("data");
+                binding.imageViewFood.setImageBitmap(fotoActual);
 
-                // Empezamos la carga
+                // Empezamos análisis
                 toggleLoading(true);
-
-                enviarFotoAN8n(imageBitmap);
+                enviarFotoAN8n(fotoActual, URL_ANALISIS, true); // true = es análisis
             }
         }
     }
 
-    // --- CONTROL DE ANIMACIÓN ---
+    // --- CONTROL VISUAL ---
     private void toggleLoading(boolean isLoading) {
         if (binding == null) return;
 
         if (isLoading) {
-            // MOSTRAR animación, OCULTAR todo lo demás
+            // Cargando: mostramos animación, ocultamos resto
             binding.animationView.setVisibility(View.VISIBLE);
             binding.animationView.playAnimation();
-            binding.resultsGrid.setVisibility(View.GONE); // Ocultar resultados viejos
+
+            binding.resultsGrid.setVisibility(View.GONE);
+            binding.btnChef.setVisibility(View.GONE);
 
             binding.textViewStatus.setText("Consultando a la IA... ⏳");
-            binding.textViewStatus.setTextColor(Color.GRAY); // Color normal
+            binding.textViewStatus.setTextColor(Color.GRAY);
             binding.btnCamera.setEnabled(false);
         } else {
-            // OCULTAR animación
+            // Terminado: ocultamos animación
             binding.animationView.pauseAnimation();
             binding.animationView.setVisibility(View.GONE);
             binding.btnCamera.setEnabled(true);
-
-            // NOTA: No mostramos el grid aquí automáticamente.
-            // Dejamos que onResponse decida si mostrarlo (si es comida) u ocultarlo (si no lo es).
         }
     }
 
-    private void enviarFotoAN8n(Bitmap bitmap) {
+    // --- LÓGICA DEL CHEF ---
+    private void pedirRecetaChef() {
+        if (fotoActual == null) return;
+
+        binding.textViewStatus.setText("👨‍🍳 El Chef está escribiendo tu receta...");
+        binding.btnChef.setEnabled(false);
+        binding.btnChef.setText("Cocinando... 🔥");
+
+        enviarFotoAN8n(fotoActual, URL_RECETA, false); // false = es receta
+    }
+
+    // --- CONEXIÓN CON N8N ---
+    private void enviarFotoAN8n(Bitmap bitmap, String url, boolean esAnalisis) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(60, TimeUnit.SECONDS)
@@ -130,18 +143,11 @@ public class NutritionFragment extends Fragment {
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
-        byte[] byteArray = stream.toByteArray();
-
-        RequestBody requestBody = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("image", "comida.jpg",
-                        RequestBody.create(byteArray, MediaType.parse("image/jpeg")))
+        RequestBody requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM)
+                .addFormDataPart("image", "comida.jpg", RequestBody.create(stream.toByteArray(), MediaType.parse("image/jpeg")))
                 .build();
 
-        Request request = new Request.Builder()
-                .url(N8N_WEBHOOK_URL)
-                .post(requestBody)
-                .build();
+        Request request = new Request.Builder().url(url).post(requestBody).build();
 
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -149,7 +155,9 @@ public class NutritionFragment extends Fragment {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         toggleLoading(false);
-                        if (binding != null) binding.textViewStatus.setText("❌ Error de conexión: " + e.getMessage());
+                        binding.btnChef.setEnabled(true);
+                        binding.btnChef.setText("👨‍🍳 ¿Cómo lo cocino?");
+                        binding.textViewStatus.setText("❌ Error de conexión");
                     });
                 }
             }
@@ -158,69 +166,67 @@ public class NutritionFragment extends Fragment {
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
                     final String responseData = response.body().string();
-
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
-                            // Paramos la animación visualmente
-                            toggleLoading(false);
-
                             if (binding == null) return;
 
-                            try {
-                                String jsonLimpio = responseData
-                                        .replace("```json", "")
-                                        .replace("```", "")
-                                        .trim();
-
-                                JSONObject json = new JSONObject(jsonLimpio);
-
-                                // Usamos optInt para obtener números directamente
-                                int cal = json.optInt("calories", 0);
-                                int pro = json.optInt("protein", 0);
-                                int fat = json.optInt("fat", 0);
-                                int car = json.optInt("carbs", 0);
-
-                                // --- LÓGICA DE DETECCIÓN DE "NO COMIDA" ---
-                                // Si la suma de todo es 0, es que la IA no vio comida
-                                if (cal == 0 && pro == 0 && fat == 0 && car == 0) {
-
-                                    // CASO 1: NO ES COMIDA
-                                    binding.resultsGrid.setVisibility(View.GONE); // Ocultar tarjetas
-
-                                    binding.textViewStatus.setText("⚠️ No parece ser comida.\nIntenta enfocar mejor o probar otro plato.");
-                                    binding.textViewStatus.setTextColor(Color.RED); // Ponemos el texto en rojo para avisar
-
-                                } else {
-
-                                    // CASO 2: SÍ ES COMIDA
-                                    binding.resultsGrid.setVisibility(View.VISIBLE); // Mostrar tarjetas
-
-                                    binding.tvCalories.setText(String.valueOf(cal));
-                                    binding.tvProtein.setText(String.valueOf(pro));
-                                    binding.tvFat.setText(String.valueOf(fat));
-                                    binding.tvCarbs.setText(String.valueOf(car));
-
-                                    binding.textViewStatus.setText("✅ Análisis completado");
-                                    binding.textViewStatus.setTextColor(Color.parseColor("#999999")); // Resetear color a gris
-                                }
-
-                            } catch (Exception e) {
-                                binding.textViewStatus.setText("⚠️ Error leyendo datos.");
-                            }
-                        });
-                    }
-                } else {
-                    if (getActivity() != null) {
-                        getActivity().runOnUiThread(() -> {
-                            toggleLoading(false);
-                            if (binding != null) {
-                                binding.textViewStatus.setText("❌Escanee una comida de verdad, porfavor❌");
+                            if (esAnalisis) {
+                                // 1. Respuesta de MACROS
+                                toggleLoading(false);
+                                procesarAnalisis(responseData);
+                            } else {
+                                // 2. Respuesta de RECETA
+                                binding.btnChef.setEnabled(true);
+                                binding.btnChef.setText("👨‍🍳 ¿Cómo lo cocino?");
+                                binding.textViewStatus.setText("✅ Receta lista");
+                                mostrarRecetaEnDialogo(responseData);
                             }
                         });
                     }
                 }
             }
         });
+    }
+
+    private void procesarAnalisis(String jsonRaw) {
+        try {
+            String jsonLimpio = jsonRaw.replace("```json", "").replace("```", "").trim();
+            JSONObject json = new JSONObject(jsonLimpio);
+
+            int cal = json.optInt("calories", 0);
+            int pro = json.optInt("protein", 0);
+            int fat = json.optInt("fat", 0);
+            int car = json.optInt("carbs", 0);
+
+            // Si todo es 0, no es comida
+            if (cal == 0 && pro == 0 && fat == 0 && car == 0) {
+                binding.resultsGrid.setVisibility(View.GONE);
+                binding.btnChef.setVisibility(View.GONE); // No mostrar Chef
+                binding.textViewStatus.setText("⚠️ No parece ser comida.");
+                binding.textViewStatus.setTextColor(Color.RED);
+            } else {
+                binding.resultsGrid.setVisibility(View.VISIBLE);
+                binding.btnChef.setVisibility(View.VISIBLE); // ¡Mostrar Chef!
+
+                binding.tvCalories.setText(String.valueOf(cal));
+                binding.tvProtein.setText(String.valueOf(pro));
+                binding.tvFat.setText(String.valueOf(fat));
+                binding.tvCarbs.setText(String.valueOf(car));
+
+                binding.textViewStatus.setText("✅ Análisis completado");
+                binding.textViewStatus.setTextColor(Color.parseColor("#999999"));
+            }
+        } catch (Exception e) {
+            binding.textViewStatus.setText("⚠️ Error leyendo datos.");
+        }
+    }
+
+    private void mostrarRecetaEnDialogo(String receta) {
+        new AlertDialog.Builder(getContext())
+                .setTitle("👨‍🍳 Receta del Chef")
+                .setMessage(receta)
+                .setPositiveButton("¡Gracias!", (dialog, which) -> dialog.dismiss())
+                .show();
     }
 
     @Override
