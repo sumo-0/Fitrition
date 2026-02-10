@@ -13,7 +13,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
@@ -23,6 +22,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -35,43 +35,39 @@ import okhttp3.Response;
 
 public class NutritionFragment extends Fragment {
 
+
     private FragmentNutritionBinding binding;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
-    private static final int REQUEST_CAMERA_PERMISSION = 100; // Código para identificar el permiso
+    private static final int REQUEST_CAMERA_PERMISSION = 100;
 
-    // IMPORTANTE: Pon tu URL de n8n aquí
+    // IMPORTANTE: He cambiado '/webhook-test/' por '/webhook/' para PRODUCCIÓN.
+    // Asegúrate de que en n8n el interruptor "Active" esté en VERDE.
     private static final String N8N_WEBHOOK_URL = "https://markits.app.n8n.cloud/webhook-test/analizar-comida";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentNutritionBinding.inflate(inflater, container, false);
-
         binding.btnCamera.setOnClickListener(v -> verificarPermisosYAbrirCamara());
-
         return binding.getRoot();
     }
 
-    // NUEVO MÉTODO: Verifica si tenemos permiso antes de abrir nada
     private void verificarPermisosYAbrirCamara() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
-            // Si no tenemos permiso, lo pedimos
             requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         } else {
-            // Si ya lo tenemos, abrimos cámara directo
             abrirCamara();
         }
     }
 
-    // Este método recibe la respuesta del usuario (Si dijo "Sí" o "No")
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CAMERA_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                abrirCamara(); // ¡Nos dio permiso!
+                abrirCamara();
             } else {
-                Toast.makeText(getContext(), "Se necesita permiso de cámara para analizar comida", Toast.LENGTH_LONG).show();
+                Toast.makeText(getContext(), "Se necesita permiso de cámara", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -79,8 +75,6 @@ public class NutritionFragment extends Fragment {
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         try {
-            // En Android 11+ esto a veces falla si no tienes <queries> en el manifest,
-            // así que envolvemos en try-catch para seguridad extra.
             startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
         } catch (Exception e) {
             Toast.makeText(getContext(), "No se pudo abrir la cámara: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -94,23 +88,46 @@ public class NutritionFragment extends Fragment {
             Bundle extras = data.getExtras();
             if (extras != null && extras.containsKey("data")) {
                 Bitmap imageBitmap = (Bitmap) extras.get("data");
-
                 binding.imageViewFood.setImageBitmap(imageBitmap);
-                binding.textViewResult.setText("Analizando... esto puede tardar unos segundos ⏳");
+
+                // INICIO DE LA ANIMACIÓN
+                toggleLoading(true);
 
                 enviarFotoAN8n(imageBitmap);
             }
         }
     }
 
+    // --- MÉTODO PARA CONTROLAR LA ANIMACIÓN ---
+    private void toggleLoading(boolean isLoading) {
+        if (binding == null) return;
+
+        if (isLoading) {
+            // MOSTRAR animación, OCULTAR resultados viejos
+            binding.animationView.setVisibility(View.VISIBLE);
+            binding.animationView.playAnimation();
+
+            // Ocultamos el grid de resultados mientras carga para que se vea limpio
+            binding.resultsGrid.setVisibility(View.GONE);
+
+            binding.textViewStatus.setText("Consultando a la IA... ⏳");
+            binding.btnCamera.setEnabled(false);
+        } else {
+            // OCULTAR animación
+            binding.animationView.pauseAnimation();
+            binding.animationView.setVisibility(View.GONE);
+
+            // Mostrar resultados
+            binding.resultsGrid.setVisibility(View.VISIBLE);
+            binding.btnCamera.setEnabled(true);
+        }
+    }
+
     private void enviarFotoAN8n(Bitmap bitmap) {
-
- 
-
         OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS) // Tiempo para conectar con el servidor
-                .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)   // Tiempo para subir la foto (si es grande)
-                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)    // Tiempo esperando a que la IA responda
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
                 .build();
 
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -132,9 +149,12 @@ public class NutritionFragment extends Fragment {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 if (getActivity() != null) {
-                    getActivity().runOnUiThread(() ->
-                            binding.textViewResult.setText("Error de conexión: " + e.getMessage())
-                    );
+                    getActivity().runOnUiThread(() -> {
+                        toggleLoading(false); // Parar animación
+                        if (binding != null) {
+                            binding.textViewStatus.setText("❌ Error de conexión: " + e.getMessage());
+                        }
+                    });
                 }
             }
 
@@ -142,35 +162,51 @@ public class NutritionFragment extends Fragment {
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 if (response.isSuccessful() && response.body() != null) {
                     final String responseData = response.body().string();
+
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
+                            if (binding == null) return; // Protección crash
+
                             try {
-                                JSONObject json = new JSONObject(responseData);
+                                // 1. Limpieza del JSON
+                                String jsonLimpio = responseData
+                                        .replace("```json", "")
+                                        .replace("```", "")
+                                        .trim();
 
-                                // Ajusta estos nombres según lo que devuelva tu n8n
-                                String calorias = json.optString("calories", "0");
-                                String prote = json.optString("protein", "0");
-                                String grasas = json.optString("fat", "0");
-                                String carbs = json.optString("carbs", "0");
+                                JSONObject json = new JSONObject(jsonLimpio);
 
-                                String resultado =
-                                        "🔥 Calorías: " + calorias + " kcal\n" +
-                                                "🥩 Proteínas: " + prote + "g\n" +
-                                                "🥑 Grasas: " + grasas + "g\n" +
-                                                "🍞 Carbohidratos: " + carbs + "g";
+                                // 2. Obtener datos
+                                String cal = json.optString("calories", "0");
+                                String pro = json.optString("protein", "0");
+                                String fat = json.optString("fat", "0");
+                                String car = json.optString("carbs", "0");
 
-                                binding.textViewResult.setText(resultado);
+                                // 3. Pintar en las nuevas tarjetas
+                                binding.tvCalories.setText(cal);
+                                binding.tvProtein.setText(pro);
+                                binding.tvFat.setText(fat);
+                                binding.tvCarbs.setText(car);
+
+                                binding.textViewStatus.setText("✅ Análisis completado");
+
+                                // 4. Parar animación y mostrar todo
+                                toggleLoading(false);
 
                             } catch (Exception e) {
-                                binding.textViewResult.setText("Error leyendo datos: " + responseData);
+                                toggleLoading(false);
+                                binding.textViewStatus.setText("⚠️ Error leyendo datos. Intenta de nuevo.");
                             }
                         });
                     }
                 } else {
                     if (getActivity() != null) {
-                        getActivity().runOnUiThread(() ->
-                                binding.textViewResult.setText("Error del servidor: " + response.code())
-                        );
+                        getActivity().runOnUiThread(() -> {
+                            toggleLoading(false);
+                            if (binding != null) {
+                                binding.textViewStatus.setText("❌ Error del servidor: " + response.code());
+                            }
+                        });
                     }
                 }
             }
