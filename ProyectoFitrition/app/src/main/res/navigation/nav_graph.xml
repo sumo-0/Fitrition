@@ -6,22 +6,22 @@
 
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.example.fitrition.HomeFragment"
+        android:name="com.example.proyectofitrition.HomeFragment"
         android:label="Inicio" />
 
     <fragment
         android:id="@+id/workoutsFragment"
-        android:name="com.example.fitrition.WorkoutsFragment"
+        android:name="com.example.proyectofitrition.WorkoutsFragment"
         android:label="Entrenamientos" />
 
     <fragment
         android:id="@+id/nutritionFragment"
-        android:name="com.example.fitrition.NutritionFragment"
+        android:name="com.example.proyectofitrition.Nutrition1Fragment"
         android:label="Nutrición" />
 
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.example.fitrition.ProfileFragment"
+        android:name="com.example.proyectofitrition.ProfileFragment"
         android:label="Perfil" />
 
 </navigation>

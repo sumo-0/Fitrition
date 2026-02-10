@@ -29,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
                 } else if (item.getItemId() == R.id.nav_workouts) {
                     selectedFragment = new WorkoutsFragment();
                 } else if (item.getItemId() == R.id.nav_nutrition) {
-                    selectedFragment = new NutritionFragment();
+                    selectedFragment = new Nutrition1Fragment();
                 } else if (item.getItemId() == R.id.nav_profile) {
                     selectedFragment = new ProfileFragment();
                 }
