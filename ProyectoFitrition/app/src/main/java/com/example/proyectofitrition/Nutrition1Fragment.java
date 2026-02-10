@@ -18,10 +18,9 @@ public class Nutrition1Fragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_nutrition1, container, false);
 
-        // Obtener referencia al botón
+
         MaterialButton btnAddMeal = view.findViewById(R.id.btn_add_meal);
 
-        // Configurar el click para navegar al nuevo fragmento
         btnAddMeal.setOnClickListener(v -> {
 
             getParentFragmentManager().beginTransaction()

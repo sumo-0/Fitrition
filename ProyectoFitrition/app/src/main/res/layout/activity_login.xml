@@ -9,12 +9,13 @@
     android:padding="24dp">
 
     <!-- Logo o título -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="🏋️"
-        android:textSize="80sp"
-        android:layout_marginBottom="16dp" />
+    <ImageView
+        android:layout_width="162dp"
+        android:layout_height="143dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:textSize="60sp"
+        app:srcCompat="@drawable/logo_fitrition" />
 
     <TextView
         android:layout_width="wrap_content"
