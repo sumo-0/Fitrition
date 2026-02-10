@@ -61,6 +61,7 @@
                 android:textStyle="bold"
                 android:layout_marginBottom="12dp" />
 
+
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -269,6 +270,7 @@
 
             <!-- Logout Button -->
             <androidx.cardview.widget.CardView
+                android:id="@+id/card_logout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
