@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class Nutrition1Fragment extends Fragment {
 
@@ -85,9 +86,9 @@ public class Nutrition1Fragment extends Fragment {
                     .commit();
         });
 
-        btnAddFoodManual.setOnClickListener(v -> {
-            Toast.makeText(getActivity(), "Función manual próximamente", Toast.LENGTH_SHORT).show();
-        });
+
+        btnAddFoodManual.setOnClickListener(v -> mostrarDialogoAnadirComida());
+
 
         // Inicializar lógica de agua
         loadWaterState();
@@ -241,6 +242,113 @@ public class Nutrition1Fragment extends Fragment {
                     getActivity().runOnUiThread(() -> {
                         Toast.makeText(getContext(), "Error al cargar comidas: " + error,
                                 Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+    private void mostrarDialogoAnadirComida() {
+        View dialogView = LayoutInflater.from(getContext()).inflate(R.layout.dialog_add_meal_manual, null);
+
+        com.google.android.material.textfield.TextInputEditText etName = dialogView.findViewById(R.id.et_meal_name);
+        com.google.android.material.textfield.TextInputEditText etCalories = dialogView.findViewById(R.id.et_meal_calories);
+        com.google.android.material.textfield.TextInputEditText etProtein = dialogView.findViewById(R.id.et_meal_protein);
+        com.google.android.material.textfield.TextInputEditText etCarbs = dialogView.findViewById(R.id.et_meal_carbs);
+        com.google.android.material.textfield.TextInputEditText etFats = dialogView.findViewById(R.id.et_meal_fats);
+
+        new android.app.AlertDialog.Builder(requireContext())
+                .setView(dialogView)
+                .setPositiveButton("✅ Guardar", (dialog, which) -> {
+                    String name = etName.getText().toString().trim();
+                    String caloriesStr = etCalories.getText().toString().trim();
+                    String proteinStr = etProtein.getText().toString().trim();
+                    String carbsStr = etCarbs.getText().toString().trim();
+                    String fatsStr = etFats.getText().toString().trim();
+
+                    if (name.isEmpty() || caloriesStr.isEmpty()) {
+                        Toast.makeText(getContext(), "⚠️ Nombre y calorías son obligatorios", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    try {
+                        int calories = Integer.parseInt(caloriesStr);
+                        double protein = proteinStr.isEmpty() ? 0 : Double.parseDouble(proteinStr);
+                        double carbs = carbsStr.isEmpty() ? 0 : Double.parseDouble(carbsStr);
+                        double fats = fatsStr.isEmpty() ? 0 : Double.parseDouble(fatsStr);
+
+                        guardarComidaManual(name, calories, protein, carbs, fats);
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(getContext(), "⚠️ Valores numéricos inválidos", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("❌ Cancelar", null)
+                .show();
+    }
+    private void loadMeals() {
+        supabaseManager.getUserMeals(new SupabaseManager.MealsCallback() {
+            @Override
+            public void onSuccess(List<Meal> meals) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        mealList.clear();
+                        mealList.addAll(meals);
+                        mealAdapter.notifyDataSetChanged();
+
+                        // Actualizar total de calorías
+                        int totalCalories = 0;
+                        for (Meal meal : meals) {
+                            totalCalories += meal.getCalories();
+                        }
+                        tvTotalCalories.setText("Total del día: " + totalCalories + " kcal");
+
+                        // Mostrar/ocultar empty state
+                        if (meals.isEmpty()) {
+                            tvEmptyMeals.setVisibility(View.VISIBLE);
+                            recyclerMeals.setVisibility(View.GONE);
+                        } else {
+                            tvEmptyMeals.setVisibility(View.GONE);
+                            recyclerMeals.setVisibility(View.VISIBLE);
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Error al cargar comidas", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    private void guardarComidaManual(String name, int calories, double protein, double carbs, double fats) {
+        String userId = supabaseManager.getCurrentUserId();
+        String mealId = java.util.UUID.randomUUID().toString();
+        long timestamp = System.currentTimeMillis();
+
+        Meal meal = new Meal(mealId, userId, name, calories, protein, carbs, fats,
+                "Manual", timestamp, null);
+
+        supabaseManager.createMeal(meal, new SupabaseManager.DatabaseCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "✅ Comida añadida correctamente", Toast.LENGTH_SHORT).show();
+                        // Recargar la lista de comidas si existe
+                        loadMeals();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "❌ Error: " + error, Toast.LENGTH_SHORT).show();
                     });
                 }
             }
