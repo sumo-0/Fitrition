@@ -18,12 +18,15 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.example.proyectofitrition.api.SupabaseManager;
 import com.example.proyectofitrition.databinding.FragmentNutritionBinding;
+import com.example.proyectofitrition.models.Meal;
 
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
@@ -41,18 +44,24 @@ public class NutritionFragment extends Fragment {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_CAMERA_PERMISSION = 100;
 
-    // Variable para guardar la foto y poder enviarla al Chef
     private Bitmap fotoActual;
-
-    // URL 1: Analizar Comida (Macros) - Asegúrate que es POST y termina en /webhook/
     private static final String URL_ANALISIS = "https://markits.app.n8n.cloud/webhook-test/analizar-comida";
-
-    // URL 2: Modo Chef (¡Crea el nuevo flujo en n8n y pon la URL aquí!)
     private static final String URL_RECETA = "https://markits.app.n8n.cloud/webhook-test/receta-chef";
+
+    private SupabaseManager supabaseManager;
+
+    // Datos actuales de la comida
+    private int currentCalories = 0;
+    private int currentProtein = 0;
+    private int currentFat = 0;
+    private int currentCarbs = 0;
+    private String currentFoodName = "Comida detectada";
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentNutritionBinding.inflate(inflater, container, false);
+
+        supabaseManager = new SupabaseManager(requireContext());
 
         binding.btnCamera.setOnClickListener(v -> verificarPermisosYAbrirCamara());
         binding.btnChef.setOnClickListener(v -> pedirRecetaChef());
@@ -80,7 +89,11 @@ public class NutritionFragment extends Fragment {
 
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        try { startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE); } catch (Exception e) {}
+        try {
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Error al abrir cámara", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -91,38 +104,30 @@ public class NutritionFragment extends Fragment {
             if (extras != null && extras.containsKey("data")) {
                 fotoActual = (Bitmap) extras.get("data");
                 binding.imageViewFood.setImageBitmap(fotoActual);
-
-                // Empezamos análisis
                 toggleLoading(true);
-                enviarFotoAN8n(fotoActual, URL_ANALISIS, true); // true = es análisis
+                enviarFotoAN8n(fotoActual, URL_ANALISIS, true);
             }
         }
     }
 
-    // --- CONTROL VISUAL ---
     private void toggleLoading(boolean isLoading) {
         if (binding == null) return;
 
         if (isLoading) {
-            // Cargando: mostramos animación, ocultamos resto
             binding.animationView.setVisibility(View.VISIBLE);
             binding.animationView.playAnimation();
-
             binding.resultsGrid.setVisibility(View.GONE);
             binding.btnChef.setVisibility(View.GONE);
-
             binding.textViewStatus.setText("Consultando a la IA... ⏳");
             binding.textViewStatus.setTextColor(Color.GRAY);
             binding.btnCamera.setEnabled(false);
         } else {
-            // Terminado: ocultamos animación
             binding.animationView.pauseAnimation();
             binding.animationView.setVisibility(View.GONE);
             binding.btnCamera.setEnabled(true);
         }
     }
 
-    // --- LÓGICA DEL CHEF ---
     private void pedirRecetaChef() {
         if (fotoActual == null) return;
 
@@ -130,10 +135,9 @@ public class NutritionFragment extends Fragment {
         binding.btnChef.setEnabled(false);
         binding.btnChef.setText("Cocinando... 🔥");
 
-        enviarFotoAN8n(fotoActual, URL_RECETA, false); // false = es receta
+        enviarFotoAN8n(fotoActual, URL_RECETA, false);
     }
 
-    // --- CONEXIÓN CON N8N ---
     private void enviarFotoAN8n(Bitmap bitmap, String url, boolean esAnalisis) {
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(60, TimeUnit.SECONDS)
@@ -171,11 +175,9 @@ public class NutritionFragment extends Fragment {
                             if (binding == null) return;
 
                             if (esAnalisis) {
-                                // 1. Respuesta de MACROS
                                 toggleLoading(false);
                                 procesarAnalisis(responseData);
                             } else {
-                                // 2. Respuesta de RECETA
                                 binding.btnChef.setEnabled(true);
                                 binding.btnChef.setText("👨‍🍳 ¿Cómo lo cocino?");
                                 binding.textViewStatus.setText("✅ Receta lista");
@@ -193,32 +195,99 @@ public class NutritionFragment extends Fragment {
             String jsonLimpio = jsonRaw.replace("```json", "").replace("```", "").trim();
             JSONObject json = new JSONObject(jsonLimpio);
 
-            int cal = json.optInt("calories", 0);
-            int pro = json.optInt("protein", 0);
-            int fat = json.optInt("fat", 0);
-            int car = json.optInt("carbs", 0);
+            currentCalories = json.optInt("calories", 0);
+            currentProtein = json.optInt("protein", 0);
+            currentFat = json.optInt("fat", 0);
+            currentCarbs = json.optInt("carbs", 0);
+            currentFoodName = json.optString("name", "Comida detectada");
 
-            // Si todo es 0, no es comida
-            if (cal == 0 && pro == 0 && fat == 0 && car == 0) {
+            if (currentCalories == 0 && currentProtein == 0 && currentFat == 0 && currentCarbs == 0) {
                 binding.resultsGrid.setVisibility(View.GONE);
-                binding.btnChef.setVisibility(View.GONE); // No mostrar Chef
+                binding.btnChef.setVisibility(View.GONE);
                 binding.textViewStatus.setText("⚠️ No parece ser comida.");
                 binding.textViewStatus.setTextColor(Color.RED);
             } else {
                 binding.resultsGrid.setVisibility(View.VISIBLE);
-                binding.btnChef.setVisibility(View.VISIBLE); // ¡Mostrar Chef!
+                binding.btnChef.setVisibility(View.VISIBLE);
 
-                binding.tvCalories.setText(String.valueOf(cal));
-                binding.tvProtein.setText(String.valueOf(pro));
-                binding.tvFat.setText(String.valueOf(fat));
-                binding.tvCarbs.setText(String.valueOf(car));
+                binding.tvCalories.setText(String.valueOf(currentCalories));
+                binding.tvProtein.setText(String.valueOf(currentProtein));
+                binding.tvFat.setText(String.valueOf(currentFat));
+                binding.tvCarbs.setText(String.valueOf(currentCarbs));
 
                 binding.textViewStatus.setText("✅ Análisis completado");
                 binding.textViewStatus.setTextColor(Color.parseColor("#999999"));
+
+                // Mostrar diálogo para guardar
+                mostrarDialogoGuardar();
             }
         } catch (Exception e) {
             binding.textViewStatus.setText("⚠️ Error leyendo datos.");
         }
+    }
+
+    private void mostrarDialogoGuardar() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Guardar Comida")
+                .setMessage("¿Deseas guardar esta comida en tu registro diario?")
+                .setPositiveButton("Guardar", (dialog, which) -> guardarComidaEnSupabase())
+                .setNegativeButton("Ahora no", null)
+                .show();
+    }
+
+    private void guardarComidaEnSupabase() {
+        if (!supabaseManager.isUserLoggedIn()) {
+            Toast.makeText(getContext(), "Debes iniciar sesión", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (currentCalories == 0 && currentProtein == 0 && currentFat == 0 && currentCarbs == 0) {
+            Toast.makeText(getContext(), "No hay datos para guardar", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        binding.textViewStatus.setText("Guardando... 💾");
+
+        String mealId = UUID.randomUUID().toString();
+        String userId = supabaseManager.getCurrentUserId();
+
+        Meal meal = new Meal(
+                mealId,
+                userId,
+                currentFoodName,
+                currentCalories,
+                currentProtein,
+                currentCarbs,
+                currentFat,
+                "Escaneada",
+                System.currentTimeMillis(),
+                null  // Sin imagen por ahora
+        );
+
+        supabaseManager.createMeal(meal, new SupabaseManager.DatabaseCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(),
+                                "✅ Comida guardada correctamente",
+                                Toast.LENGTH_SHORT).show();
+                        binding.textViewStatus.setText("✅ Guardado exitoso");
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(),
+                                "❌ Error al guardar: " + error,
+                                Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 
     private void mostrarRecetaEnDialogo(String receta) {
