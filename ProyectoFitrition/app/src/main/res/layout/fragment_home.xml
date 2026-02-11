@@ -11,7 +11,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Header -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -28,7 +27,6 @@
             android:textSize="14sp"
             android:textColor="#666666" />
 
-        <!-- Stats Card -->
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,7 +54,6 @@
                     android:orientation="horizontal"
                     android:weightSum="3">
 
-                    <!-- Calories -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -80,7 +77,6 @@
                             android:textColor="#666666" />
                     </LinearLayout>
 
-                    <!-- Steps -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -104,7 +100,6 @@
                             android:textColor="#666666" />
                     </LinearLayout>
 
-                    <!-- Minutes -->
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -134,7 +129,6 @@
 
         </androidx.cardview.widget.CardView>
 
-        <!-- Quick Actions -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -151,6 +145,7 @@
             android:weightSum="2">
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/card_quick_workout"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
                 android:layout_weight="1"
@@ -186,6 +181,7 @@
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
+                android:id="@+id/card_quick_nutrition"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
                 android:layout_weight="1"
@@ -222,7 +218,6 @@
 
         </LinearLayout>
 
-        <!-- Recent Workouts -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
