@@ -1,13 +1,16 @@
 package com.example.proyectofitrition;
 
+import android.animation.Animator;
+import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -15,21 +18,21 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import com.airbnb.lottie.LottieAnimationView;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 public class Nutrition1Fragment extends Fragment {
 
-    // Array para guardar las referencias a los 10 vasos
     private ImageView[] waterGlasses = new ImageView[10];
-    // Array para saber si un vaso está lleno o no
     private boolean[] isGlassFull = new boolean[10];
     private TextView waterCountText;
     private int glassesDrankCount = 0;
-    private Animation fillAnimation;
 
-    // Constantes para SharedPreferences
+    // Referencia al componente Lottie
+    private LottieAnimationView lottieCelebration;
+
     private static final String PREFS_NAME = "FitritionWaterPrefs";
     private static final String KEY_LAST_DATE = "last_water_date";
 
@@ -38,12 +41,33 @@ public class Nutrition1Fragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_nutrition1, container, false);
 
-        // --- Tu código existente de botones ---
+        // Referencias
         Button btnAddFoodCamera = view.findViewById(R.id.btn_add_food_camera);
         Button btnAddFoodManual = view.findViewById(R.id.btn_add_food_manual);
+        waterCountText = view.findViewById(R.id.water_count_text);
+        lottieCelebration = view.findViewById(R.id.lottie_celebration);
 
+        // Configurar listener para ocultar la animación cuando termine
+        lottieCelebration.addAnimatorListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(@NonNull Animator animation) {}
+
+            @Override
+            public void onAnimationEnd(@NonNull Animator animation) {
+                // Cuando termina el confeti, ocultamos la vista
+                lottieCelebration.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onAnimationCancel(@NonNull Animator animation) {}
+            @Override
+            public void onAnimationRepeat(@NonNull Animator animation) {}
+        });
+
+        // Navegación
         btnAddFoodCamera.setOnClickListener(v -> {
             getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
                     .replace(R.id.fragment_container, new NutritionFragment())
                     .addToBackStack(null)
                     .commit();
@@ -52,26 +76,16 @@ public class Nutrition1Fragment extends Fragment {
         btnAddFoodManual.setOnClickListener(v -> {
             Toast.makeText(getActivity(), "Función manual próximamente", Toast.LENGTH_SHORT).show();
         });
-        // ---------------------------------------
 
-        // === Lógica del Registro de Agua ===
-        waterCountText = view.findViewById(R.id.water_count_text);
-        fillAnimation = AnimationUtils.loadAnimation(getContext(), R.anim.water_fill_anim);
-
-        // Cargar el estado guardado del día
+        // Inicializar lógica de agua
         loadWaterState();
-
-        // Inicializar los vasos y sus listeners
         initializeWaterGlasses(view);
-
-        // Actualizar el texto inicial
         updateWaterCountText();
 
         return view;
     }
 
     private void initializeWaterGlasses(View view) {
-        // IDs de los vasos en el XML
         int[] glassIds = {
                 R.id.water_glass_1, R.id.water_glass_2, R.id.water_glass_3, R.id.water_glass_4,
                 R.id.water_glass_5, R.id.water_glass_6, R.id.water_glass_7, R.id.water_glass_8,
@@ -82,51 +96,76 @@ public class Nutrition1Fragment extends Fragment {
             final int index = i;
             waterGlasses[index] = view.findViewById(glassIds[index]);
 
-            // Establecer la imagen correcta según el estado cargado
+            // Establecer nivel inicial (sin animación al abrir la app)
+            Drawable glassDrawable = waterGlasses[index].getDrawable();
             if (isGlassFull[index]) {
-                waterGlasses[index].setImageResource(R.drawable.ic_water_full);
+                glassDrawable.setLevel(10000); // Lleno
             } else {
-                waterGlasses[index].setImageResource(R.drawable.ic_water_empty);
+                glassDrawable.setLevel(0);     // Vacío
             }
 
-            // Configurar el clic
-            waterGlasses[index].setOnClickListener(v -> handleGlassClick(index));
+            waterGlasses[index].setOnClickListener(v -> handleGlassClick(index, v));
         }
     }
 
-    private void handleGlassClick(int index) {
+    private void handleGlassClick(int index, View v) {
+        Drawable drawable = waterGlasses[index].getDrawable();
+
         if (!isGlassFull[index]) {
-            // Si está vacío, llenarlo
+            // == LLENAR VASO ==
             isGlassFull[index] = true;
-            waterGlasses[index].setImageResource(R.drawable.ic_water_full);
-            waterGlasses[index].startAnimation(fillAnimation); // Reproducir animación
+
+            // Animar el nivel de líquido (clip drawable)
+            ObjectAnimator animator = ObjectAnimator.ofInt(drawable, "level", 0, 10000);
+            animator.setDuration(600);
+            animator.setInterpolator(new DecelerateInterpolator());
+            animator.start();
+
+            // Vibración
+            v.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
             glassesDrankCount++;
+
+            // CHECK: ¿Hemos llegado a la meta?
+            if (glassesDrankCount == 10) {
+                playCelebration();
+            }
+
         } else {
-            // Si está lleno, vaciarlo (por si el usuario se equivoca)
+            // == VACIAR VASO ==
             isGlassFull[index] = false;
-            waterGlasses[index].setImageResource(R.drawable.ic_water_empty);
+
+            ObjectAnimator animator = ObjectAnimator.ofInt(drawable, "level", 10000, 0);
+            animator.setDuration(400);
+            animator.start();
+
             glassesDrankCount--;
         }
         updateWaterCountText();
-        saveWaterState(); // Guardar el nuevo estado
+        saveWaterState();
+    }
+
+    private void playCelebration() {
+        // Aseguramos que la vista es visible antes de reproducir
+        lottieCelebration.setVisibility(View.VISIBLE);
+        lottieCelebration.playAnimation();
+
+        Toast.makeText(getContext(), "¡Hidratación completa! 💧🎉", Toast.LENGTH_LONG).show();
     }
 
     private void updateWaterCountText() {
         waterCountText.setText(glassesDrankCount + " / 10 vasos (Meta: 2.5L)");
     }
 
-    // --- Métodos de Persistencia (SharedPreferences) ---
+    // --- MÉTODOS DE GUARDADO (PERSISTENCIA) ---
 
     private void saveWaterState() {
         if (getActivity() == null) return;
         SharedPreferences prefs = getActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
 
-        // Guardar la fecha de hoy
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         editor.putString(KEY_LAST_DATE, today);
 
-        // Guardar el estado de cada vaso
         for (int i = 0; i < 10; i++) {
             editor.putBoolean("glass_" + i, isGlassFull[i]);
         }
@@ -142,18 +181,14 @@ public class Nutrition1Fragment extends Fragment {
         glassesDrankCount = 0;
 
         if (!lastDate.equals(today)) {
-            // Si es un nuevo día, resetear todo
-            for (int i = 0; i < 10; i++) {
-                isGlassFull[i] = false;
-            }
-            saveWaterState(); // Guardar el estado reseteado
+            // Nuevo día: resetear todo
+            for (int i = 0; i < 10; i++) isGlassFull[i] = false;
+            saveWaterState();
         } else {
-            // Si es el mismo día, cargar el estado
+            // Mismo día: cargar estado
             for (int i = 0; i < 10; i++) {
                 isGlassFull[i] = prefs.getBoolean("glass_" + i, false);
-                if (isGlassFull[i]) {
-                    glassesDrankCount++;
-                }
+                if (isGlassFull[i]) glassesDrankCount++;
             }
         }
     }

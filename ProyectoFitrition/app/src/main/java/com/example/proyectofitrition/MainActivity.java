@@ -15,9 +15,11 @@ public class MainActivity extends AppCompatActivity {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnNavigationItemSelectedListener(navListener);
 
-        // Cargar el fragmento inicial
-        getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, new HomeFragment()).commit();
+        // Cargar el fragmento inicial sin animación la primera vez
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, new HomeFragment()).commit();
+        }
     }
 
     private BottomNavigationView.OnNavigationItemSelectedListener navListener =
@@ -36,7 +38,10 @@ public class MainActivity extends AppCompatActivity {
 
                 if (selectedFragment != null) {
                     getSupportFragmentManager().beginTransaction()
-                            .replace(R.id.fragment_container, selectedFragment).commit();
+                            // AQUI ESTA LA MAGIA: Animaciones de entrada y salida
+                            .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+                            .replace(R.id.fragment_container, selectedFragment)
+                            .commit();
                 }
 
                 return true;

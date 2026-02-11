@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
@@ -16,41 +18,43 @@ public class HomeFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        // Inflar el layout del fragmento
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        // 1. Buscar las tarjetas por su ID (definidos en fragment_home.xml)
+        // 1. Referencias
         CardView cardWorkout = view.findViewById(R.id.card_quick_workout);
         CardView cardNutrition = view.findViewById(R.id.card_quick_nutrition);
 
-        // 2. Configurar clic para "Entrenar"
-        cardWorkout.setOnClickListener(v -> {
-            // Navegar al fragmento de Workouts
-            getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new WorkoutsFragment())
-                    .addToBackStack(null) // Permite volver atrás con el botón de retroceso
-                    .commit();
+        // 2. Animaciones de entrada
+        Animation anim = AnimationUtils.loadAnimation(getContext(), R.anim.fade_scale_in);
+        // Retraso para la segunda tarjeta (efecto cascada)
+        Animation animDelay = AnimationUtils.loadAnimation(getContext(), R.anim.fade_scale_in);
+        animDelay.setStartOffset(150);
 
-            // Actualizar el menú inferior para resaltar "Entrenamientos"
+        cardWorkout.startAnimation(anim);
+        cardNutrition.startAnimation(animDelay);
+
+        // 3. Clics (Navegación)
+        cardWorkout.setOnClickListener(v -> {
+            getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
+                    .replace(R.id.fragment_container, new WorkoutsFragment())
+                    .addToBackStack(null)
+                    .commit();
             actualizarBottomNav(R.id.nav_workouts);
         });
 
-        // 3. Configurar clic para "Nutrición"
         cardNutrition.setOnClickListener(v -> {
-            // Navegar directamente al fragmento de Nutrición (cámara/análisis)
             getParentFragmentManager().beginTransaction()
+                    .setCustomAnimations(R.anim.slide_in_right, R.anim.slide_out_left)
                     .replace(R.id.fragment_container, new NutritionFragment())
                     .addToBackStack(null)
                     .commit();
-
-            // Actualizar el menú inferior para resaltar "Nutrición"
             actualizarBottomNav(R.id.nav_nutrition);
         });
 
         return view;
     }
 
-    // Método auxiliar para cambiar el icono seleccionado en el menú inferior
     private void actualizarBottomNav(int itemId) {
         if (getActivity() != null) {
             BottomNavigationView bottomNav = getActivity().findViewById(R.id.bottom_navigation);
