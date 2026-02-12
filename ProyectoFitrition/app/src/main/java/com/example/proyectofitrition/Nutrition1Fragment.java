@@ -105,6 +105,14 @@ public class Nutrition1Fragment extends Fragment {
         recyclerMeals.setLayoutManager(new LinearLayoutManager(getContext()));
         recyclerMeals.setAdapter(mealAdapter);
 
+        mealAdapter.setOnMealDeleteListener((meal, position) -> {
+            new android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Eliminar comida")
+                    .setMessage("¿Estás seguro de eliminar \"" + meal.getName() + "\"?")
+                    .setPositiveButton("Eliminar", (dialog, which) -> eliminarComida(meal, position))
+                    .setNegativeButton("Cancelar", null)
+                    .show();
+        });
         // Cargar comidas desde Supabase
         if (supabaseManager.isUserLoggedIn()) {
             cargarComidas();
@@ -353,6 +361,57 @@ public class Nutrition1Fragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void eliminarComida(Meal meal, int position) {
+        supabaseManager.deleteMeal(meal.getMealId(), new SupabaseManager.DatabaseCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        // Buscar el índice real del meal en la lista
+                        int realIndex = -1;
+                        for (int i = 0; i < mealList.size(); i++) {
+                            if (mealList.get(i).getMealId().equals(meal.getMealId())) {
+                                realIndex = i;
+                                break;
+                            }
+                        }
+
+                        if (realIndex != -1) {
+                            mealList.remove(realIndex);
+                            mealAdapter.notifyItemRemoved(realIndex);
+
+                            // Verificar si la lista quedó vacía
+                            if (mealList.isEmpty()) {
+                                tvEmptyMeals.setVisibility(View.VISIBLE);
+                                recyclerMeals.setVisibility(View.GONE);
+                            }
+
+                            actualizarTotalCalorias();
+                            Toast.makeText(getContext(), "✅ Comida eliminada", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "❌ Error: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    private void actualizarTotalCalorias() {
+        int totalCalories = 0;
+        for (Meal meal : mealList) {
+            totalCalories += meal.getCalories();
+        }
+        tvTotalCalories.setText("Total del día: " + totalCalories + " kcal");
     }
 
     @Override

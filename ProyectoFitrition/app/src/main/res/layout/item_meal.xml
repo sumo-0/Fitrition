@@ -65,6 +65,18 @@
 
         </LinearLayout>
 
+        <!-- BOTÓN ELIMINAR -->
+        <ImageView
+            android:id="@+id/btn_delete_meal"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:src="@android:drawable/ic_menu_delete"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:contentDescription="Eliminar comida"
+            android:tint="#FF6B6B" />
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

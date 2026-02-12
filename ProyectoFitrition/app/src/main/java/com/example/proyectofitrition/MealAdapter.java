@@ -24,10 +24,20 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
 
     private List<Meal> meals;
     private Context context;
+    private OnMealDeleteListener deleteListener;
+
+    // Interface para el callback de eliminación
+    public interface OnMealDeleteListener {
+        void onDelete(Meal meal, int position);
+    }
 
     public MealAdapter(List<Meal> meals, Context context) {
         this.meals = meals;
         this.context = context;
+    }
+
+    public void setOnMealDeleteListener(OnMealDeleteListener listener) {
+        this.deleteListener = listener;
     }
 
     @NonNull
@@ -51,10 +61,9 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         holder.tvDate.setText(sdf.format(new Date(meal.getTimestamp())));
 
-        // CARGAR IMAGEN SI EXISTE
+        // CARGAR IMAGEN
         if (meal.getImageUrl() != null && !meal.getImageUrl().isEmpty()) {
             try {
-                // Extraer el Base64 después de "data:image/jpeg;base64,"
                 String base64Image = meal.getImageUrl();
                 if (base64Image.contains(",")) {
                     base64Image = base64Image.split(",")[1];
@@ -66,14 +75,18 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
                 holder.ivMeal.setImageBitmap(bitmap);
                 holder.ivMeal.setScaleType(ImageView.ScaleType.CENTER_CROP);
             } catch (Exception e) {
-                // Si falla, usar ícono genérico
                 holder.ivMeal.setImageResource(R.drawable.ic_nutrition);
-                android.util.Log.e("MEAL_ADAPTER", "Error decodificando imagen: " + e.getMessage());
             }
         } else {
-            // Sin imagen, usar ícono genérico
             holder.ivMeal.setImageResource(R.drawable.ic_nutrition);
         }
+
+        // BOTÓN ELIMINAR
+        holder.btnDelete.setOnClickListener(v -> {
+            if (deleteListener != null) {
+                deleteListener.onDelete(meal, position);
+            }
+        });
     }
 
     @Override
@@ -82,7 +95,7 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
     }
 
     static class MealViewHolder extends RecyclerView.ViewHolder {
-        ImageView ivMeal;
+        ImageView ivMeal, btnDelete;
         TextView tvName, tvCalories, tvMacros, tvDate;
 
         public MealViewHolder(@NonNull View itemView) {
@@ -92,6 +105,7 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
             tvCalories = itemView.findViewById(R.id.tv_calories);
             tvMacros = itemView.findViewById(R.id.tv_macros);
             tvDate = itemView.findViewById(R.id.tv_date);
+            btnDelete = itemView.findViewById(R.id.btn_delete_meal);
         }
     }
 }

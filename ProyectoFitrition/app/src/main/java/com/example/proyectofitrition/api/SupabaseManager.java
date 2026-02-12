@@ -431,4 +431,36 @@ public class SupabaseManager {
             }
         }).start();
     }
+    // Eliminar comida
+    public void deleteMeal(String mealId, DatabaseCallback callback) {
+        new Thread(() -> {
+            try {
+                android.util.Log.d("SUPABASE_MEALS", "=== ELIMINANDO COMIDA ===");
+                android.util.Log.d("SUPABASE_MEALS", "MealId: " + mealId);
+
+                Request request = new Request.Builder()
+                        .url(REST_URL + "/meals?meal_id=eq." + mealId)
+                        .addHeader("apikey", SUPABASE_ANON_KEY)
+                        .addHeader("Authorization", "Bearer " + getAccessToken())
+                        .delete()
+                        .build();
+
+                Response response = client.newCall(request).execute();
+                String responseBody = response.body().string();
+
+                android.util.Log.d("SUPABASE_MEALS", "Status: " + response.code());
+
+                if (response.isSuccessful() || response.code() == 204) {
+                    android.util.Log.d("SUPABASE_MEALS", "✅ Comida eliminada");
+                    callback.onSuccess();
+                } else {
+                    android.util.Log.e("SUPABASE_MEALS", "❌ Error: " + responseBody);
+                    callback.onError(responseBody);
+                }
+            } catch (Exception e) {
+                android.util.Log.e("SUPABASE_MEALS", "❌ Excepción: " + e.getMessage());
+                callback.onError(e.getMessage());
+            }
+        }).start();
+    }
 }
