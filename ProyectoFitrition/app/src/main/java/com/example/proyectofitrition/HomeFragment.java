@@ -25,10 +25,15 @@ import java.util.Random;
 
 public class HomeFragment extends Fragment {
 
-    // Variables Pasos
+    // Variables UI
     private TextView textStepsCount;
+    private TextView textCalories; // Nuevo campo de calorías
     private Button btnAddSteps;
+    private Button btnResetSteps; // Nuevo botón reset
     private int stepsCount = 0;
+
+    // Constante para calorías (0.045 kcal por paso promedio)
+    private static final double CALORIES_PER_STEP = 0.045;
 
     // Variables Motivación
     private TextView textQuote;
@@ -58,38 +63,45 @@ public class HomeFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        // --- 1. Referencias UI ---
+        // --- 1. Inicializar Referencias ---
         CardView cardWorkout = view.findViewById(R.id.card_quick_workout);
         CardView cardNutrition = view.findViewById(R.id.card_quick_nutrition);
-        textStepsCount = view.findViewById(R.id.text_steps_count);
-        btnAddSteps = view.findViewById(R.id.btn_add_steps);
 
-        // Referencias Motivación
+        textStepsCount = view.findViewById(R.id.text_steps_count);
+        textCalories = view.findViewById(R.id.text_calories); // Referencia a calorías
+        btnAddSteps = view.findViewById(R.id.btn_add_steps);
+        btnResetSteps = view.findViewById(R.id.btn_reset_steps); // Referencia al botón reset
+
         textQuote = view.findViewById(R.id.text_quote);
         btnNewQuote = view.findViewById(R.id.btn_new_quote);
 
-        // --- 2. Cargar datos de pasos ---
+        // --- 2. Cargar datos ---
         loadStepsData();
 
-        // --- 3. Lógica Pasos ---
+        // --- 3. Lógica Botones Pasos ---
         btnAddSteps.setOnClickListener(v -> {
             stepsCount += 500;
-            updateStepsUI();
+            updateStatsUI(); // Actualiza pasos y calorías
             saveStepsData();
-            Toast.makeText(getContext(), "+500 Pasos", Toast.LENGTH_SHORT).show();
+        });
+
+        btnResetSteps.setOnClickListener(v -> {
+            stepsCount = 0;
+            updateStatsUI();
+            saveStepsData();
+            Toast.makeText(getContext(), "Contador reiniciado 🔄", Toast.LENGTH_SHORT).show();
         });
 
         // --- 4. Lógica Motivación ---
-        setRandomQuote(); // Frase inicial
+        setRandomQuote();
         btnNewQuote.setOnClickListener(v -> {
-            // Pequeña animación al cambiar texto
             textQuote.animate().alpha(0f).setDuration(150).withEndAction(() -> {
                 setRandomQuote();
                 textQuote.animate().alpha(1f).setDuration(150);
             });
         });
 
-        // --- 5. Animaciones de entrada ---
+        // --- 5. Animaciones ---
         Animation anim = AnimationUtils.loadAnimation(getContext(), R.anim.fade_scale_in);
         Animation animDelay = AnimationUtils.loadAnimation(getContext(), R.anim.fade_scale_in);
         animDelay.setStartOffset(150);
@@ -124,8 +136,14 @@ public class HomeFragment extends Fragment {
         textQuote.setText("\"" + quotes[randomIndex] + "\"");
     }
 
-    private void updateStepsUI() {
+    // Método unificado para actualizar Pasos y Calorías
+    private void updateStatsUI() {
+        // Actualizar pasos
         textStepsCount.setText(String.format(Locale.getDefault(), "%,d", stepsCount));
+
+        // Calcular y actualizar calorías
+        int caloriesBurned = (int) (stepsCount * CALORIES_PER_STEP);
+        textCalories.setText(String.format(Locale.getDefault(), "%,d", caloriesBurned));
     }
 
     private void saveStepsData() {
@@ -153,7 +171,7 @@ public class HomeFragment extends Fragment {
         } else {
             stepsCount = prefs.getInt(KEY_STEPS, 0);
         }
-        updateStepsUI();
+        updateStatsUI();
     }
 
     private void actualizarBottomNav(int itemId) {

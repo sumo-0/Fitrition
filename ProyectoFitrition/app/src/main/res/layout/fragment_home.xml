@@ -61,46 +61,86 @@
                         android:gravity="center"
                         android:orientation="vertical">
 
+                        <TextView
+                            android:id="@+id/text_calories"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="24sp"
+                            android:textStyle="bold"
+                            android:textColor="#FF6B6B" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Calorías"
+                            android:textSize="12sp"
+                            android:textColor="#666666" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="145dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_reset_steps"
+                                android:layout_width="30dp"
+                                android:layout_height="30dp"
+                                android:layout_marginEnd="6dp"
+                                android:gravity="center"
+                                android:insetLeft="0dp"
+                                android:insetTop="0dp"
+                                android:insetRight="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                android:text="↺"
+                                android:textSize="14sp"
+                                app:backgroundTint="#EF9A9A"
+                                app:cornerRadius="15dp"
+                                app:elevation="2dp" />
 
                             <TextView
                                 android:id="@+id/text_steps_count"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="0"
+                                android:textColor="#4ECDC4"
                                 android:textSize="24sp"
-                                android:textStyle="bold"
-                                android:textColor="#4ECDC4" />
+                                android:textStyle="bold" />
 
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_add_steps"
+                                android:layout_width="30dp"
+                                android:layout_height="30dp"
+                                android:layout_marginStart="6dp"
+                                android:insetLeft="0dp"
+                                android:insetTop="0dp"
+                                android:insetRight="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                android:text="+"
+                                android:textSize="18sp"
+                                app:backgroundTint="#4ECDC4"
+                                app:cornerRadius="15dp"
+                                app:elevation="2dp" />
                         </LinearLayout>
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Pasos (+500)"
-                            android:textSize="12sp"
-                            android:textColor="#666666" />
+                            android:text="Pasos"
+                            android:textColor="#666666"
+                            android:textSize="12sp" />
                     </LinearLayout>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_add_steps"
-                        android:layout_width="60dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="6dp"
-                        android:insetLeft="0dp"
-                        android:insetTop="0dp"
-                        android:insetRight="0dp"
-                        android:insetBottom="0dp"
-                        android:padding="0dp"
-                        android:text="+"
-                        android:textSize="20sp"
-                        app:backgroundTint="#4ECDC4"
-                        app:cornerRadius="18dp"
-                        app:elevation="2dp" />
 
                 </LinearLayout>
 
