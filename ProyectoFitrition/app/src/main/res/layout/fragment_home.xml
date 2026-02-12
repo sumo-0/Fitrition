@@ -43,7 +43,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Actividad Física"
+                    android:text="Progreso de Hoy"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
@@ -64,17 +64,17 @@
                         <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
-                            android:orientation="horizontal">
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
 
                             <TextView
                                 android:id="@+id/text_steps_count"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:text="0"
-                                android:textColor="#4ECDC4"
                                 android:textSize="24sp"
-                                android:textStyle="bold" />
+                                android:textStyle="bold"
+                                android:textColor="#4ECDC4" />
 
                         </LinearLayout>
 
@@ -82,13 +82,13 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Pasos (+500)"
-                            android:textColor="#666666"
-                            android:textSize="12sp" />
+                            android:textSize="12sp"
+                            android:textColor="#666666" />
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_add_steps"
-                        android:layout_width="62dp"
+                        android:layout_width="60dp"
                         android:layout_height="match_parent"
                         android:layout_marginStart="6dp"
                         android:insetLeft="0dp"
@@ -201,7 +201,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Entrenamientos Recientes"
+            android:text="Motivación Diaria"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -209,29 +209,39 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="80dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:gravity="center"
+                android:padding="24dp">
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/text_quote"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Entrenamiento de Piernas"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:text="Cargando frase..."
+                    android:textSize="18sp"
+                    android:textStyle="italic"
+                    android:textColor="#333333"
+                    android:gravity="center"
+                    android:fontFamily="sans-serif-medium"/>
 
-                <TextView
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_new_quote"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="45 min • 320 calorías"
-                    android:textColor="#666666"
-                    android:textSize="14sp" />
+                    android:layout_marginTop="16dp"
+                    android:text="Nueva Frase 💡"
+                    android:textColor="#FF6B6B"
+                    app:strokeColor="#FF6B6B"
+                    app:rippleColor="#FFCDD2" />
 
             </LinearLayout>
 
