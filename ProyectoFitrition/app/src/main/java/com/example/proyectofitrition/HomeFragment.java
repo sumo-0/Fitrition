@@ -16,6 +16,10 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.cardview.widget.CardView;
 import androidx.fragment.app.Fragment;
+
+import com.example.proyectofitrition.api.SupabaseManager;
+import com.example.proyectofitrition.models.User;
+
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.text.SimpleDateFormat;
@@ -31,6 +35,8 @@ public class HomeFragment extends Fragment {
     private Button btnAddSteps;
     private Button btnResetSteps; // Nuevo botón reset
     private int stepsCount = 0;
+    private TextView tvGreeting;
+    private SupabaseManager supabaseManager;
 
     // Constante para calorías (0.045 kcal por paso promedio)
     private static final double CALORIES_PER_STEP = 0.045;
@@ -74,6 +80,10 @@ public class HomeFragment extends Fragment {
 
         textQuote = view.findViewById(R.id.text_quote);
         btnNewQuote = view.findViewById(R.id.btn_new_quote);
+
+        supabaseManager = new SupabaseManager(requireContext());
+        tvGreeting = view.findViewById(R.id.tv_greeting);
+        cargarEmailUsuario();
 
         // --- 2. Cargar datos ---
         loadStepsData();
@@ -181,5 +191,26 @@ public class HomeFragment extends Fragment {
                 bottomNav.setSelectedItemId(itemId);
             }
         }
+    }
+
+    private void cargarEmailUsuario() {
+        supabaseManager.getCurrentUser(new SupabaseManager.UserCallback() {
+            @Override
+            public void onSuccess(User user) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        String email = user.getEmail();
+                        String nombre = email.split("@")[0];
+                        nombre = nombre.substring(0, 1).toUpperCase() + nombre.substring(1);
+                        tvGreeting.setText("¡Hola, " + nombre + "!");
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                android.util.Log.e("HOME", "Error al cargar usuario: " + error);
+            }
+        });
     }
 }
