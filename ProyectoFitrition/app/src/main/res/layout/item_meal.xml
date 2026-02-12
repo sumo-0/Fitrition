@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="12dp"
+    android:layout_margin="8dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="4dp">
 
@@ -14,27 +14,24 @@
         android:padding="12dp">
 
         <ImageView
-            android:id="@+id/iv_meal"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:src="@drawable/ic_nutrition"
-            android:scaleType="centerInside"
-            android:background="#E0E0E0"
-            android:padding="16dp"
-            android:contentDescription="Ícono de comida" />
+            android:id="@+id/iv_meal_image"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="12dp"
+            android:contentDescription="ImagenComida" />
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/tv_meal_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nombre de la comida"
+                android:text="Nombre comida"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 android:textColor="#000000" />
@@ -43,29 +40,28 @@
                 android:id="@+id/tv_calories"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="450 kcal"
+                android:text="0 kcal"
                 android:textSize="14sp"
                 android:textColor="#FF6B6B"
-                android:textStyle="bold" />
+                android:layout_marginTop="4dp" />
 
             <TextView
                 android:id="@+id/tv_macros"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="P: 25g | C: 40g | G: 15g"
+                android:text="P: 0g | C: 0g | G: 0g"
                 android:textSize="12sp"
-                android:textColor="#666666" />
+                android:textColor="#666666"
+                android:layout_marginTop="4dp" />
 
             <TextView
                 android:id="@+id/tv_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="11/02/2026 14:30"
+                android:text="01/01/2024 12:00"
                 android:textSize="11sp"
-                android:textColor="#999999" />
+                android:textColor="#999999"
+                android:layout_marginTop="4dp" />
 
         </LinearLayout>
 

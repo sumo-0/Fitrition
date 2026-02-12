@@ -251,6 +251,15 @@ public class NutritionFragment extends Fragment {
         String mealId = UUID.randomUUID().toString();
         String userId = supabaseManager.getCurrentUserId();
 
+        // CONVERTIR BITMAP A BASE64
+        String imageBase64 = null;
+        if (fotoActual != null) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            fotoActual.compress(Bitmap.CompressFormat.JPEG, 80, baos);
+            byte[] imageBytes = baos.toByteArray();
+            imageBase64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(imageBytes, android.util.Base64.DEFAULT);
+        }
+
         Meal meal = new Meal(
                 mealId,
                 userId,
@@ -261,7 +270,7 @@ public class NutritionFragment extends Fragment {
                 currentFat,
                 "Escaneada",
                 System.currentTimeMillis(),
-                null  // Sin imagen por ahora
+                imageBase64  // ✅ AQUÍ LA IMAGEN EN BASE64
         );
 
         supabaseManager.createMeal(meal, new SupabaseManager.DatabaseCallback() {

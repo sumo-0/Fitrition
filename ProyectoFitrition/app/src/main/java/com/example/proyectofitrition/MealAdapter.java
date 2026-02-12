@@ -1,6 +1,9 @@
 package com.example.proyectofitrition;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,8 +51,29 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
         holder.tvDate.setText(sdf.format(new Date(meal.getTimestamp())));
 
-        // Usar ícono genérico (sin imagen por ahora)
-        holder.ivMeal.setImageResource(R.drawable.ic_nutrition);
+        // CARGAR IMAGEN SI EXISTE
+        if (meal.getImageUrl() != null && !meal.getImageUrl().isEmpty()) {
+            try {
+                // Extraer el Base64 después de "data:image/jpeg;base64,"
+                String base64Image = meal.getImageUrl();
+                if (base64Image.contains(",")) {
+                    base64Image = base64Image.split(",")[1];
+                }
+
+                byte[] decodedBytes = Base64.decode(base64Image, Base64.DEFAULT);
+                Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+
+                holder.ivMeal.setImageBitmap(bitmap);
+                holder.ivMeal.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            } catch (Exception e) {
+                // Si falla, usar ícono genérico
+                holder.ivMeal.setImageResource(R.drawable.ic_nutrition);
+                android.util.Log.e("MEAL_ADAPTER", "Error decodificando imagen: " + e.getMessage());
+            }
+        } else {
+            // Sin imagen, usar ícono genérico
+            holder.ivMeal.setImageResource(R.drawable.ic_nutrition);
+        }
     }
 
     @Override
@@ -63,7 +87,7 @@ public class MealAdapter extends RecyclerView.Adapter<MealAdapter.MealViewHolder
 
         public MealViewHolder(@NonNull View itemView) {
             super(itemView);
-            ivMeal = itemView.findViewById(R.id.iv_meal);
+            ivMeal = itemView.findViewById(R.id.iv_meal_image);
             tvName = itemView.findViewById(R.id.tv_meal_name);
             tvCalories = itemView.findViewById(R.id.tv_calories);
             tvMacros = itemView.findViewById(R.id.tv_macros);
