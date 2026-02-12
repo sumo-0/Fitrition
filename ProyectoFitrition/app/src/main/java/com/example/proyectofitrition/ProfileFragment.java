@@ -20,7 +20,7 @@ import com.google.android.material.textfield.TextInputEditText;
 
 public class ProfileFragment extends Fragment {
 
-    private TextView tvUserName, tvUserEmail, tvUserWeight, tvUserHeight, tvUserAge, tvUserBMI;
+    private TextView tvUserEmail, tvUserWeight, tvUserHeight, tvUserAge, tvUserBMI;
     private CardView cardEditWeight, cardLogout;
     private SupabaseManager supabaseManager;
     private User currentUser;
@@ -33,8 +33,6 @@ public class ProfileFragment extends Fragment {
 
         supabaseManager = new SupabaseManager(requireContext());
 
-        // Referencias
-        tvUserName = view.findViewById(R.id.tv_user_name);
         tvUserEmail = view.findViewById(R.id.tv_user_email);
         tvUserWeight = view.findViewById(R.id.tv_user_weight);
         tvUserHeight = view.findViewById(R.id.tv_user_height);
@@ -82,8 +80,6 @@ public class ProfileFragment extends Fragment {
     private void actualizarUI() {
         if (currentUser == null) return;
 
-        // Mostrar email en lugar de name
-        tvUserName.setText(currentUser.getEmail()); // ✅ Ahora muestra el email
         tvUserEmail.setText(currentUser.getEmail());
         tvUserWeight.setText(String.format("%.1f kg", currentUser.getWeight()));
         tvUserHeight.setText(String.format("%.0f cm", currentUser.getHeight()));

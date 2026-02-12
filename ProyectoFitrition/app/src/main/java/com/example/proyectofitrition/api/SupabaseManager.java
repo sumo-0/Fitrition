@@ -63,7 +63,6 @@ public class SupabaseManager {
                 android.util.Log.d("SUPABASE", "=== INICIANDO SIGNUP ===");
                 android.util.Log.d("SUPABASE", "Email: " + email);
                 android.util.Log.d("SUPABASE", "URL: " + AUTH_URL + "/signup");
-                android.util.Log.d("SUPABASE", "API Key: " + SUPABASE_ANON_KEY.substring(0, 20) + "...");
 
                 JSONObject json = new JSONObject();
                 json.put("email", email);
@@ -76,12 +75,10 @@ public class SupabaseManager {
 
                 Request request = new Request.Builder()
                         .url(AUTH_URL + "/signup")
-                        .addHeader("apikey", SUPABASE_ANON_KEY)  // ⬅️ VERIFICAR ESTO
+                        .addHeader("apikey", SUPABASE_ANON_KEY)
                         .addHeader("Content-Type", "application/json")
                         .post(body)
                         .build();
-
-                android.util.Log.d("SUPABASE", "Headers: apikey=" + request.header("apikey").substring(0, 20) + "...");
 
                 Response response = client.newCall(request).execute();
                 String responseBody = response.body().string();
@@ -90,7 +87,6 @@ public class SupabaseManager {
                 android.util.Log.d("SUPABASE", "Response Body: " + responseBody);
 
                 if (response.isSuccessful()) {
-                    // ... resto del código de éxito
                     JSONObject jsonResponse = new JSONObject(responseBody);
 
                     if (!jsonResponse.has("user")) {
@@ -102,16 +98,19 @@ public class SupabaseManager {
                     String userId = user.getString("id");
 
                     if (jsonResponse.has("session") && !jsonResponse.isNull("session")) {
+                        // ✅ Caso 1: Session disponible inmediatamente
+                        android.util.Log.d("SUPABASE", "✅ Session disponible en signup");
                         JSONObject session = jsonResponse.getJSONObject("session");
                         String accessToken = session.getString("access_token");
                         saveSession(userId, accessToken);
                         callback.onSuccess(userId);
                     } else {
-                        saveSession(userId, "pending_confirmation");
-                        callback.onSuccess(userId);
+                        // ⚠️ Caso 2: No hay session, hacer login automático
+                        android.util.Log.w("SUPABASE", "⚠️ NO hay session en signup - haciendo auto-login...");
+                        signIn(email, password, callback);
+                        return;
                     }
                 } else {
-                    // ... resto del código de error
                     try {
                         JSONObject error = new JSONObject(responseBody);
                         String errorMsg = error.optString("message", "");
@@ -129,6 +128,7 @@ public class SupabaseManager {
                         callback.onError("Error en el servidor: " + responseBody);
                     }
                 }
+
             } catch (Exception e) {
                 android.util.Log.e("SUPABASE", "Excepción: " + e.getMessage());
                 e.printStackTrace();
@@ -140,6 +140,9 @@ public class SupabaseManager {
     public void signIn(String email, String password, AuthCallback callback) {
         new Thread(() -> {
             try {
+                android.util.Log.d("SUPABASE", "=== INICIANDO LOGIN ===");
+                android.util.Log.d("SUPABASE", "Email: " + email);
+
                 JSONObject json = new JSONObject();
                 json.put("email", email);
                 json.put("password", password);
@@ -159,10 +162,11 @@ public class SupabaseManager {
                 Response response = client.newCall(request).execute();
                 String responseBody = response.body().string();
 
+                android.util.Log.d("SUPABASE", "Login Status Code: " + response.code());
+
                 if (response.isSuccessful()) {
                     JSONObject jsonResponse = new JSONObject(responseBody);
 
-                    // Verificar que la respuesta contenga el usuario
                     if (!jsonResponse.has("user")) {
                         callback.onError("Respuesta inválida del servidor");
                         return;
@@ -172,14 +176,17 @@ public class SupabaseManager {
                     String userId = user.getString("id");
                     String accessToken = jsonResponse.getString("access_token");
 
+                    android.util.Log.d("SUPABASE", "✅ Login exitoso - Token guardado");
                     saveSession(userId, accessToken);
                     callback.onSuccess(userId);
                 } else {
                     JSONObject error = new JSONObject(responseBody);
                     String errorMsg = error.optString("error_description", "Credenciales incorrectas");
+                    android.util.Log.e("SUPABASE", "❌ Error login: " + errorMsg);
                     callback.onError(errorMsg);
                 }
             } catch (Exception e) {
+                android.util.Log.e("SUPABASE", "❌ Excepción login: " + e.getMessage());
                 callback.onError("Error de conexión: " + e.getMessage());
             }
         }).start();
@@ -197,11 +204,12 @@ public class SupabaseManager {
         return prefs.getString("user_id", null);
     }
 
-    private String getAccessToken() {
+    public String getAccessToken() {
         return prefs.getString("access_token", null);
     }
 
     private void saveSession(String userId, String accessToken) {
+        android.util.Log.d("SUPABASE", "💾 Guardando sesión - UserId: " + userId);
         prefs.edit()
                 .putString("user_id", userId)
                 .putString("access_token", accessToken)
@@ -241,31 +249,28 @@ public class SupabaseManager {
                         MediaType.parse("application/json")
                 );
 
-                // Construir request
                 Request.Builder requestBuilder = new Request.Builder()
                         .url(REST_URL + "/users")
                         .addHeader("apikey", SUPABASE_ANON_KEY)
                         .addHeader("Content-Type", "application/json")
                         .addHeader("Prefer", "return=minimal");
 
-                // Solo añadir Authorization si tenemos un token válido
                 String token = getAccessToken();
                 if (token != null && !token.equals("pending_confirmation") && token.startsWith("eyJ")) {
                     requestBuilder.addHeader("Authorization", "Bearer " + token);
-                    android.util.Log.d("SUPABASE_DB", "Token válido encontrado");
+                    android.util.Log.d("SUPABASE_DB", "✅ Token válido añadido");
                 } else {
-                    android.util.Log.w("SUPABASE_DB", "No hay token válido, usando solo apikey");
+                    android.util.Log.w("SUPABASE_DB", "⚠️ Sin token válido, usando solo apikey");
                 }
 
                 Request request = requestBuilder.post(body).build();
-
                 Response response = client.newCall(request).execute();
                 String responseBody = response.body().string();
 
                 android.util.Log.d("SUPABASE_DB", "Status Code: " + response.code());
                 android.util.Log.d("SUPABASE_DB", "Response: " + responseBody);
 
-                if (response.isSuccessful()) {
+                if (response.isSuccessful() || response.code() == 201) {
                     android.util.Log.d("SUPABASE_DB", "✅ Usuario creado exitosamente");
                     callback.onSuccess();
                 } else {
@@ -350,7 +355,11 @@ public class SupabaseManager {
     public void createMeal(Meal meal, DatabaseCallback callback) {
         new Thread(() -> {
             try {
+                android.util.Log.d("SUPABASE_MEALS", "=== CREANDO COMIDA ===");
+                android.util.Log.d("SUPABASE_MEALS", "Meal: " + meal.getName());
+
                 String json = gson.toJson(meal);
+                android.util.Log.d("SUPABASE_MEALS", "JSON: " + json);
 
                 RequestBody body = RequestBody.create(
                         json,
@@ -367,13 +376,20 @@ public class SupabaseManager {
                         .build();
 
                 Response response = client.newCall(request).execute();
+                String responseBody = response.body().string();
 
-                if (response.isSuccessful()) {
+                android.util.Log.d("SUPABASE_MEALS", "Status: " + response.code());
+                android.util.Log.d("SUPABASE_MEALS", "Response: " + responseBody);
+
+                if (response.isSuccessful() || response.code() == 201) {
+                    android.util.Log.d("SUPABASE_MEALS", "✅ Comida creada");
                     callback.onSuccess();
                 } else {
-                    callback.onError(response.body().string());
+                    android.util.Log.e("SUPABASE_MEALS", "❌ Error: " + responseBody);
+                    callback.onError(responseBody);
                 }
             } catch (Exception e) {
+                android.util.Log.e("SUPABASE_MEALS", "❌ Excepción: " + e.getMessage());
                 callback.onError(e.getMessage());
             }
         }).start();
@@ -384,6 +400,8 @@ public class SupabaseManager {
         new Thread(() -> {
             try {
                 String userId = getCurrentUserId();
+                android.util.Log.d("SUPABASE_MEALS", "=== OBTENIENDO COMIDAS ===");
+                android.util.Log.d("SUPABASE_MEALS", "UserId: " + userId);
 
                 Request request = new Request.Builder()
                         .url(REST_URL + "/meals?user_id=eq." + userId + "&order=timestamp.desc")
@@ -395,14 +413,20 @@ public class SupabaseManager {
                 Response response = client.newCall(request).execute();
                 String responseBody = response.body().string();
 
+                android.util.Log.d("SUPABASE_MEALS", "Status: " + response.code());
+                android.util.Log.d("SUPABASE_MEALS", "Response: " + responseBody);
+
                 if (response.isSuccessful()) {
                     Type listType = new TypeToken<List<Meal>>(){}.getType();
                     List<Meal> meals = gson.fromJson(responseBody, listType);
+                    android.util.Log.d("SUPABASE_MEALS", "✅ Comidas parseadas: " + (meals != null ? meals.size() : 0));
                     callback.onSuccess(meals != null ? meals : new ArrayList<>());
                 } else {
+                    android.util.Log.e("SUPABASE_MEALS", "❌ Error: " + responseBody);
                     callback.onError(responseBody);
                 }
             } catch (Exception e) {
+                android.util.Log.e("SUPABASE_MEALS", "❌ Excepción: " + e.getMessage());
                 callback.onError(e.getMessage());
             }
         }).start();
